@@ -620,12 +620,20 @@ return{begin,frame,stop};
 })();
 let wrongSaid=false,shoeSaid=false,turnT=0;   // 走廊：往反方向走到底的那句、走到一半發現沒穿鞋的那句
 function start(){bubT0=-1;bubs=[];wrongSaid=false;shoeSaid=false;turnT=0;audioInit();decodeAll();POV.stop();PRESS.stop();document.body.classList.remove('press');scene='class';barefoot=false;state='lines';stT=0;step=0;sit=sitT=1;px=SEAT_X;py=SEAT_Y;depth=1;face=1;vel=0;phase=0;amp=0;raise=0;raiseT=0;laugh=false;laughA=0;doorOpen=0;aAlpha=1;camX=camT=SEAT_X+60;
-  $('start').style.display='none';$('end').style.display='none';$('lines').style.display='flex';$('ln').style.opacity=0;$('ln').className='';$('ln').dataset.k='';$('ln').dataset.c='';
+  $('start').style.display='none';$('end').style.display='none';$('end').style.opacity=1;if(hasCh1)preCh1();$('lines').style.display='flex';$('ln').style.opacity=0;$('ln').className='';$('ln').dataset.k='';$('ln').dataset.c='';
   $('black').style.transition='none';$('black').style.opacity=0;$('bl').classList.remove('show');$('br').classList.remove('show');$('bu').classList.remove('show');$('say').style.opacity=0;}
 $('go').onclick=()=>{if(nload>=NEED)start();};$('again').onclick=start;
 /* 序章結束 → 第一章：上傳到 GitHub 時第一章是同一個資料夾裡的 ch1.html；在 Claude 上看的時候找不到它，就打開第一章的 Claude 連結 */
 const NEXT_LOCAL='ch1.html',NEXT_WEB='https://claude.ai/artifact/3GJzz6NMuev5pfHb9hgkeT';
-$('next').onclick=()=>{fetch(NEXT_LOCAL,{method:'HEAD'}).then(r=>{if(!r.ok)throw 0;location.href=NEXT_LOCAL;}).catch(()=>{try{window.open(NEXT_WEB,'_blank');}catch(e){location.href=NEXT_WEB;}});};
+let hasCh1=null;fetch(NEXT_LOCAL,{method:'HEAD'}).then(r=>{hasCh1=r.ok;}).catch(()=>{hasCh1=false;});
+/* 序章一開始就在背景先把第一章下載好，結束時直接接上不用等 */
+let ch1Pre=false;function preCh1(){if(ch1Pre)return;ch1Pre=true;setTimeout(()=>{fetch(NEXT_LOCAL).then(r=>r.ok&&r.blob()).catch(()=>{});},4000);}
+/* 序章結束：「序章　結束」停一下 → 淡黑 → 自動進第一章（網址加 ?c=1，第一章就不會再出現「開始」）。在 Claude 上看找不到 ch1.html，才顯示按鈕 */
+const END_HOLD=2.6;
+function toCh1(){const e=$('end');e.style.display='flex';$('next').style.display='none';$('again').style.display='none';
+  setTimeout(()=>{if(hasCh1){e.style.transition='opacity 1s';e.style.opacity=0;setTimeout(()=>{location.href=NEXT_LOCAL+'?c=1';},1000);}
+    else{$('next').style.display='';$('again').style.display='';}},END_HOLD*1000);}
+$('next').onclick=()=>{if(hasCh1){location.href=NEXT_LOCAL+'?c=1';return;}try{window.open(NEXT_WEB,'_blank');}catch(e){location.href=NEXT_WEB;}};
 
 // 全班笑的時候身體會抖：每個同學一個區塊 [左,右,快慢,起始]，區塊中間抖最大、邊緣不動
 const LZ=[[190,335,6.1,0],[425,505,6.9,2.1],[500,585,5.7,4.0],[578,682,6.5,1.2],[688,772,5.9,3.3],[765,832,7.1,.6],[855,952,6.3,2.7],[1012,1078,6.8,4.6],[1068,1138,5.8,1.7],[1188,1252,6.6,3.9],[1244,1328,6.0,.3],[1363,1427,7.0,2.4],[1418,1518,6.2,5.1]];
@@ -789,7 +797,7 @@ function frame(ms){
   if(state==='wcin'){dir=0;if(stT>1.6){state='walk';$('bl').classList.add('show');$('br').classList.add('show');}}
   if(state==='pee'){dir=0;vel=0;                                       // 站到尿斗前面：切黑，接蒼蠅小遊戲
     if(stT>.25&&!doorOpen){doorOpen=1;$('black').style.transition='opacity .6s';$('black').style.opacity=1;}
-    if(stT>1.5){state='pov';$('say').style.opacity=0;POV.begin(()=>{state='press';document.body.classList.add('press');PRESS.begin(()=>{state='end';$('end').style.display='flex';});});
+    if(stT>1.5){state='pov';$('say').style.opacity=0;POV.begin(()=>{state='press';document.body.classList.add('press');PRESS.begin(()=>{state='end';toCh1();});});
       $('black').style.transition='opacity 1.4s';$('black').style.opacity=0;}}
   if(state==='pov'){POV.frame(dt,ms);window.__dbg={scene,state,stT,px,py};if(state==='pov')return;}
   if(state==='press'){PRESS.frame(dt);window.__dbg={scene,state,stT,px,py};return;}

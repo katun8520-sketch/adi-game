@@ -619,6 +619,11 @@ function begin(){phoneReset();lookStk.length=0;curTop=null;pog=false;pogT=-9;doc
   st='title';stT=0;bowled=false;called=0;q=0;carry=null;given={g:false,w:false};freeze=0;queue=[];look=null;lookA=0;lid=1;px=DOOR_ME;face=1;vel=0;camX=300;
   $('chap').style.display='flex';$('chapT').style.opacity=0;$('chapT').textContent=CHAPTER;showWalk(false);setAct(null);if(roomG)roomG.gain.value=0;}
 $('go').addEventListener('click',begin);$('again').addEventListener('click',begin);
+if(/[?&]c=1/.test(location.search)){$('start').style.display='none';
+  const goC=()=>{if(nload>=NEED)begin();else setTimeout(goC,100);};goC();
+  const unlock=()=>{try{if(!AC)audioInit();else AC.resume();}catch(e){}
+    if(AC&&AC.state==='running')['pointerdown','touchend','keydown'].forEach(k=>removeEventListener(k,unlock,true));};
+  ['pointerdown','touchend','keydown'].forEach(k=>addEventListener(k,unlock,true));}
 
 /* ───────── 香和煙（香每天都在燒） ───────── */
 let tvL=.5,tvTo=.5,tvNext=0;
