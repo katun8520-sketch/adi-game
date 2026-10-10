@@ -163,7 +163,7 @@ function drawAdi(){
 // ================= 聲音 =================
 let AC=null,nb=null,roomG=null;
 function audioInit(){if(AC){AC.resume();return;}try{
-  AC=new(window.AudioContext||window.webkitAudioContext)();const n=AC.sampleRate*2;nb=AC.createBuffer(1,n,AC.sampleRate);const d=nb.getChannelData(0);
+  AC=new(window.AudioContext||window.webkitAudioContext)();window.__sharedAC=AC;const n=AC.sampleRate*2;nb=AC.createBuffer(1,n,AC.sampleRate);const d=nb.getChannelData(0);
   for(let i=0;i<n;i++)d[i]=Math.random()*2-1;
   roomG=AC.createGain();roomG.gain.value=0;roomG.connect(AC.destination);
   // 教室的底噪 + 吊扇一圈一圈的聲音
@@ -620,20 +620,30 @@ return{begin,frame,stop};
 })();
 let wrongSaid=false,shoeSaid=false,turnT=0;   // 走廊：往反方向走到底的那句、走到一半發現沒穿鞋的那句
 function start(){bubT0=-1;bubs=[];wrongSaid=false;shoeSaid=false;turnT=0;audioInit();decodeAll();POV.stop();PRESS.stop();document.body.classList.remove('press');scene='class';barefoot=false;state='lines';stT=0;step=0;sit=sitT=1;px=SEAT_X;py=SEAT_Y;depth=1;face=1;vel=0;phase=0;amp=0;raise=0;raiseT=0;laugh=false;laughA=0;doorOpen=0;aAlpha=1;camX=camT=SEAT_X+60;
-  $('start').style.display='none';$('end').style.display='none';$('end').style.opacity=1;if(hasCh1)preCh1();$('lines').style.display='flex';$('ln').style.opacity=0;$('ln').className='';$('ln').dataset.k='';$('ln').dataset.c='';
+  $('start').style.display='none';$('end').style.display='none';$('end').style.opacity=1;preCh1();$('lines').style.display='flex';$('ln').style.opacity=0;$('ln').className='';$('ln').dataset.k='';$('ln').dataset.c='';
   $('black').style.transition='none';$('black').style.opacity=0;$('bl').classList.remove('show');$('br').classList.remove('show');$('bu').classList.remove('show');$('say').style.opacity=0;}
 $('go').onclick=()=>{if(nload>=NEED)start();};$('again').onclick=start;
 /* 序章結束 → 第一章：上傳到 GitHub 時第一章是同一個資料夾裡的 ch1.html；在 Claude 上看的時候找不到它，就打開第一章的 Claude 連結 */
 const NEXT_LOCAL='ch1.html',NEXT_WEB='https://claude.ai/artifact/3GJzz6NMuev5pfHb9hgkeT';
-let hasCh1=null;fetch(NEXT_LOCAL,{method:'HEAD'}).then(r=>{hasCh1=r.ok;}).catch(()=>{hasCh1=false;});
-/* 序章一開始就在背景先把第一章下載好，結束時直接接上不用等 */
-let ch1Pre=false;function preCh1(){if(ch1Pre)return;ch1Pre=true;setTimeout(()=>{fetch(NEXT_LOCAL).then(r=>r.ok&&r.blob()).catch(()=>{});},4000);}
-/* 序章結束：「序章　結束」停一下 → 淡黑 → 自動進第一章（網址加 ?c=1，第一章就不會再出現「開始」）。在 Claude 上看找不到 ch1.html，才顯示按鈕 */
-const END_HOLD=2.6;
-function toCh1(){const e=$('end');e.style.display='flex';$('next').style.display='none';$('again').style.display='none';
-  setTimeout(()=>{if(hasCh1){e.style.transition='opacity 1s';e.style.opacity=0;setTimeout(()=>{location.href=NEXT_LOCAL+'?c=1';},1000);}
-    else{$('next').style.display='';$('again').style.display='';}},END_HOLD*1000);}
-$('next').onclick=()=>{if(hasCh1){location.href=NEXT_LOCAL+'?c=1';return;}try{window.open(NEXT_WEB,'_blank');}catch(e){location.href=NEXT_WEB;}};
+/* ===== 序章 → 第一章：同一頁直接接著 =====
+   序章一開始就在背景（看不到的框裡）把第一章載好；序章最後一幕一結束，就把第一章那一框蓋上來、叫它開始。
+   聲音：第一章借用序章已經打開的聲音，所以不用再碰一下畫面。找不到 ch1.html 才退回原本的結束畫面。 */
+let ch1W=null,ch1F=null,ch1Ready=false,ch1Want=false,ch1On=false;
+addEventListener('message',e=>{const d=e.data||{};if(d.ch1==='ready'){ch1Ready=true;if(ch1Want)goCh1();}});
+function preCh1(){if(ch1W)return;
+  ch1W=document.createElement('div');ch1W.style.cssText='position:fixed;z-index:999;top:env(safe-area-inset-top,0px);left:env(safe-area-inset-left,0px);right:env(safe-area-inset-right,0px);bottom:env(safe-area-inset-bottom,0px);background:#000;visibility:hidden;opacity:0;pointer-events:none';
+  ch1F=document.createElement('iframe');ch1F.setAttribute('allow','autoplay; fullscreen; accelerometer; gyroscope; microphone');ch1F.style.cssText='border:0;width:100%;height:100%;display:block;background:#000';
+  ch1F.src=NEXT_LOCAL+'?c=1';ch1W.appendChild(ch1F);document.body.appendChild(ch1W);}
+function goCh1(){if(ch1On)return;ch1On=true;
+  document.documentElement.style.background=document.body.style.background='#000';
+  ch1W.style.visibility='visible';ch1W.style.pointerEvents='auto';ch1W.style.transition='opacity .6s';ch1W.style.opacity=1;
+  try{ch1F.contentWindow.postMessage({ch1:'go'},'*');}catch(e){}
+  try{ch1F.focus();ch1F.contentWindow.focus();}catch(e){}
+  setTimeout(()=>{window.__proStop=true;cv.style.display='none';try{for(const k in I)I[k].src='';}catch(e){}},3000);}   // 序章停下來、放掉圖，手機比較不會吃不消
+function toCh1(){ch1Want=true;if(!ch1W)preCh1();
+  if(ch1Ready){goCh1();return;}
+  setTimeout(()=>{if(ch1On)return;const e=$('end');e.style.display='flex';},30000);}     // 30 秒還沒載好（找不到第一章），才顯示原本的結束畫面
+$('next').onclick=()=>{try{window.open(NEXT_WEB,'_blank');}catch(e){location.href=NEXT_WEB;}};
 
 // 全班笑的時候身體會抖：每個同學一個區塊 [左,右,快慢,起始]，區塊中間抖最大、邊緣不動
 const LZ=[[190,335,6.1,0],[425,505,6.9,2.1],[500,585,5.7,4.0],[578,682,6.5,1.2],[688,772,5.9,3.3],[765,832,7.1,.6],[855,952,6.3,2.7],[1012,1078,6.8,4.6],[1068,1138,5.8,1.7],[1188,1252,6.6,3.9],[1244,1328,6.0,.3],[1363,1427,7.0,2.4],[1418,1518,6.2,5.1]];
@@ -740,6 +750,7 @@ function view(){
 // ================= 主迴圈 =================
 let last=0;
 function frame(ms){
+  if(window.__proStop)return;
   requestAnimationFrame(frame);
   const t=ms/1000,rdt=Math.min(.25,t-last||0),dt=Math.min(.05,rdt);last=t;T=t;rs();   // rdt：劇情時間照真實時間走，手機再慢也不會拖長
   cx.setTransform(DPR,0,0,DPR,0,0);cx.fillStyle='#000';cx.fillRect(0,0,W,H);
