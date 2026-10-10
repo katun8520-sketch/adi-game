@@ -223,7 +223,7 @@ function say(txt,who,dur){const e=$('say');e.textContent=(who?who+'：':'')+txt;
 // ================= 操作 =================
 
 /* 小跑步：同一個方向鍵在 0.35 秒內按兩下就跑（速度是走路的 RUN_K 倍）；兩個方向鍵都放開就停 */
-const RUN_K=1.6;let running=false,ranOnce=false;const lastTap={l:-9,r:-9};
+const RUN_K=1.3;let running=false,ranOnce=false;const lastTap={l:-9,r:-9};
 function tapRun(k){const n=performance.now()/1000;if(n-lastTap[k]<.35){running=true;ranOnce=true;}lastTap[k]=n;}
 function runOff(){if(!keys.l&&!keys.r)running=false;}
 function hold(id,k){const b=$(id).firstElementChild;

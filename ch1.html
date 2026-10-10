@@ -80,11 +80,13 @@ body.looking #bl,body.looking #br{display:none}
 body #bv{top:auto;right:auto;bottom:calc(30px + env(safe-area-inset-bottom));left:calc(10px + env(safe-area-inset-left))}
 body #bv button{padding:8px 11px;font-size:12px;letter-spacing:.1em;text-indent:.1em}
 @media (orientation:landscape){body #bv{top:auto;bottom:calc(10px + env(safe-area-inset-bottom));left:calc(12px + env(safe-area-inset-left))}}
-#tip{position:fixed;left:16px;right:16px;top:calc(env(safe-area-inset-top,0px) + 14px);z-index:60;text-align:center;font-size:14px;line-height:1.5;letter-spacing:.1em;color:#f3ead8;text-shadow:0 1px 4px #000,0 0 10px #000,0 0 18px #000;opacity:0;transition:opacity .5s;pointer-events:none}
+#tip{position:fixed;left:16px;right:16px;top:calc(env(safe-area-inset-top,0px) + 58px);z-index:60;text-align:center;font-size:14px;line-height:1.5;letter-spacing:.1em;color:#f3ead8;text-shadow:0 1px 4px #000,0 0 10px #000,0 0 18px #000;opacity:0;transition:opacity .5s;pointer-events:none}
 #tip.on{animation:tipP 2.2s ease-in-out infinite}
 @keyframes tipP{0%,100%{opacity:.7}50%{opacity:1}}
 @media (orientation:landscape){#tip{font-size:13px;top:calc(env(safe-area-inset-top,0px) + 8px)}}
 #cups .hint{color:#f3ead8}
+#bt.flashT button{animation:btFlash 1.1s ease-in-out infinite}
+@keyframes btFlash{0%,100%{filter:brightness(1);box-shadow:0 0 0 rgba(255,236,190,0)}50%{filter:brightness(1.8);box-shadow:0 0 18px 4px rgba(255,236,190,.75)}}
 </style>
 <canvas id="c"></canvas>
 <div id="say"></div>
@@ -104,7 +106,7 @@ body #bv button{padding:8px 11px;font-size:12px;letter-spacing:.1em;text-indent:
  <p>香港中文大學先前針對六百零三名大學生所做的調查也發現，百分之三十七的學生有過「被鬼壓」的經驗，其中兩成的人，家裡也有其他人發生過。</p>
  <p>醫師表示，這種現象通常幾秒鐘到幾分鐘就會自行解除，對身體沒有傷害，民眾不必過度驚慌。平時作息規律、睡眠充足、避免仰睡，多半可以減少發生；如果經常發作，白天又特別想睡，應到醫院檢查。</p></div></div>
 <div id="cups"><canvas id="gl"></canvas>
- <div class="hint">提示：三杯水倒得一樣滿、不能太少；杯子上的字轉到前面，從左到右排成「佛、法、僧」。<br>點一下杯子選它，在杯子上左右拖可以轉。</div>
+ <div class="hint">提示：幫神明換好三杯水。<br>點一下杯子選它，在杯子上左右拖可以轉。</div>
  <div class="bar"><button id="btn-left" aria-label="往左換位置">◀&#xFE0E;</button><button id="btn-right" aria-label="往右換位置">▶&#xFE0E;</button><button id="btn-drain">倒掉</button><button id="btn-pour">倒水</button><button id="btn-done" class="go">好了</button></div></div>
 <div id="black"></div>
 <div id="tip"></div>
@@ -427,7 +429,7 @@ function bowl(){if(!AC)return;try{const t=AC.currentTime,out=AC.createGain();out
 /* ───────── 操作 ───────── */
 
 /* 小跑步：同一個方向鍵在 0.35 秒內按兩下就跑（速度是走路的 RUN_K 倍）；兩個方向鍵都放開就停 */
-const RUN_K=1.6;let running=false,ranOnce=false;const lastTap={l:-9,r:-9};
+const RUN_K=1.3;let running=false,ranOnce=false;const lastTap={l:-9,r:-9};
 function tapRun(k){const n=performance.now()/1000;if(n-lastTap[k]<.35){running=true;ranOnce=true;}lastTap[k]=n;}
 function runOff(){if(!keys.l&&!keys.r)running=false;}
 function hold(id,k){const b=$(id).firstElementChild;
@@ -485,7 +487,8 @@ function sCha(){if(!AC)return;try{const t0=AC.currentTime,out=AC.createGain();ou
   mk('bandpass',2400,700,2.2,.35,.02,.3,.03);            /* 厚一點的身體 */
   mk('lowpass',420,160,.7,.22,.008,.16,.02);              /* 低的收尾，才有「打下去」的感覺 */
 }catch(e){}}
-function turn(){
+let turnedOnce=false;
+function turn(){turnedOnce=true;
   const b=canTurn()&&SCENES[scn].back;if(!b||st!=='room'||look||inMom||freeze>0||turning||DOG.on)return;
   turning=true;vel=0;sCha();$('black').style.transition='opacity .2s';$('black').style.opacity=1;
   setTimeout(()=>{const w=IW,x=px,c=camX;setScene(b);px=Math.max(X_MIN,Math.min(X_MAX,(1-x/w)*IW));camX=(1-c/w)*IW;face=-face;$('black').style.opacity=0;setTimeout(()=>turning=false,180);},220);
@@ -1908,8 +1911,9 @@ MINI.inc={
   geo(){const A=miniArea(),u=Math.min(W,A.av)/100,ty=A.T0+A.av*(A.land?.72:.6),L=A.av*.3;      /* 桌面放低一點：香插進香爐以後，整支都要看得到 */
     const a=altarMap(ty),B=ALT_T.bur;
     return Object.assign(A,{u,ty,L,lt:[W*.74,ty+16*u],can:[[W*.16,ty+3*u],[W*.84,ty+3*u]],fl:[[W*.16,ty-15*u],[W*.84,ty-15*u]],bur:[a.ox+B[0]*a.s,a.oy+B[1]*a.s,B[2]*a.s],home:[W*.5,A.T0+A.av*.93]});},
-  draw(m,dt){const G=this.geo(),u=G.u;let g;
+  draw(m,dt){const G=this.geo(),u=G.u;let g;const SH=m.s===3?(m.shK||0)*G.av*.1:0;cx.save();cx.translate(0,-SH);      /* 拜下去：整個畫面往上移，香留在原地 */
     altarBack(G,G.ty,.5);
+    if(altN()&&dreamStep>=3){const a=G.ai,pw=205*a.s,ph=pw/.761;const x=a.ox+605*a.s,y=a.oy+128*a.s-ph/2;MINI.photo.pic({pw,ph},x,y,0,0);cx.fillStyle='rgba(30,4,2,.45)';cx.fillRect(x-pw/2-2,y-ph/2-2,pw+14,ph+14);}      /* 照片已經擺好了 */
     const litOn=T<(m.litT||0),fl=litOn?[[G.lt[0]+Math.sin(T*7)*u*.3,G.lt[1]-17.6*u,.9+.1*Math.sin(T*13)]]:[];      /* 只有打火機的火 */
     /* 兩支紅蠟燭、香爐（先畫，等一下整個畫面壓成暗紅色） */
     G.can.forEach(([x,y])=>{const h=22.4*u,w=h*170/466;cx.fillStyle='rgba(0,0,0,.3)';cx.beginPath();cx.ellipse(x,y+u,w*.5,u*1.1,0,0,7);cx.fill();cx.drawImage(I.candle,x-w/2,y+u-h,w,h);});
@@ -1923,8 +1927,9 @@ MINI.inc={
       if(T<(m.sparkT||0)){cx.fillStyle='rgba(255,230,160,'+(Math.random()*.9)+')';for(let i=0;i<4;i++){cx.beginPath();cx.arc(lx+(Math.random()-.5)*3*u,ly-bh-4*u-Math.random()*2*u,.4*u,0,7);cx.fill();}}}
     /* 香：在暗紅色的畫面上面畫，才看得到 */
     if(m.hx==null){m.hx=G.home[0];m.hy=G.home[1];}
-    m.dip=Math.max(0,(m.dip||0)-dt*2.6);const dipK=Math.sin(Math.min(1,m.dip)*Math.PI);
-    const held=m.s>=1&&m.s<=4,bowK=m.s===3?Math.max(clamp((m.hy-m.py0)/(G.av*.09),0,1),dipK):0,L=G.L*(1-.5*bowK);let bx=m.hx,by=m.hy+(m.s===3?dipK*G.av*.08:0),ang=0;
+    m.dip=Math.max(0,(m.dip||0)-dt*1.1);let dipK=Math.sin(Math.min(1,m.dip)*Math.PI);
+    if(m.s===3&&TILT.ok&&m.tb!=null){const tg=clamp(Math.abs(TILT.y-m.tb)/22,0,1);m.tsm=(m.tsm||0)+(tg-(m.tsm||0))*Math.min(1,dt*2.2);dipK=m.tsm;}
+    m.shK=dipK;const held=m.s>=1&&m.s<=4,bowK=m.s===3?clamp((m.hy-m.py0)/(G.av*.09),0,1):0,L=G.L*(1-.5*bowK);let bx=m.hx,by=m.hy+SH,ang=0;
     if(m.s===0){ang=Math.PI/2-.04;bx=G.home[0]-G.L/2;by=G.home[1];}
     if(m.s===5){m.in=Math.min(1,m.in+dt*2.4);const[x,y]=G.bur;bx=m.hx+(x-m.hx)*m.in;by=m.hy+(y+G.L*.16-m.hy)*m.in;}
     const tips=[];
@@ -1972,6 +1977,7 @@ MINI.inc={
       cx.globalAlpha=.55+.45*Math.sin(T*3.4);cx.shadowColor='#000';cx.shadowBlur=8;
       cx.globalAlpha=.8;cx.font='13px "Noto Sans TC","PingFang TC",sans-serif';cx.fillText(['○ ○ ○','● ○ ○','● ● ○','● ● ●'][Math.min(3,m.bow)],W/2,G.T0+70);cx.restore();}
     if(m.s===5&&m.in>=1&&!m.end){m.end=true;noise('lowpass',120,.12,1.6);setTimeout(()=>fadeTo(()=>dreamNext(),.5),1500);}
+    cx.restore();
   },
   down(m,x,y){const G=this.geo();
     if(m.s>=1&&m.s<=1&&Math.hypot(x-G.lt[0],y-(G.lt[1]-8*G.u))<11*G.u){m.flick=(m.flick||0)+1;m.idle=0;noise('highpass',3600,.12,.04);   /* 打火機：喀 */
@@ -2040,7 +2046,7 @@ MINI.photo={
     else portrait(0,0,G.pw,G.ph,sm);cx.restore();},
   draw(m,dt){const G=this.geo();this.bg(G);
     /* 紙箱（900×465）：箱子中間那一格空著，照片就放在那裡；前面那片紙板擋住照片的下半截 */
-    const bw=Math.min(W*.94,G.pw*2.7),bh=bw*465/900,bx=G.home[0]-449/900*bw,by=G.home[1]+G.ph*.2-233/465*bh,box=I.phoBox;
+    const bw=Math.min(W*.94,G.pw*2.7),bh=bw*465/900,bx=G.home[0]-449/900*bw,by=G.home[1]+G.ph*.06-233/465*bh,box=I.phoBox;
     if(box.naturalWidth){cx.fillStyle='rgba(0,0,0,.35)';cx.beginPath();cx.ellipse(G.home[0],by+bh*.98,bw*.46,bh*.06,0,0,7);cx.fill();cx.drawImage(box,bx,by,bw,bh);}
     if(m.x==null){m.x=G.home[0];m.y=G.home[1];}
     if(m.hung){m.x+=(G.spot[0]-m.x)*Math.min(1,dt*12);m.y+=(G.spot[1]-m.y)*Math.min(1,dt*12);m.sw*=Math.pow(.2,dt);}
@@ -2220,6 +2226,8 @@ function tipNow(){
       tch?(TILT.ok?'提示：拿著手機往前拜，拜三下':'提示：晃動手機，拜三下'):'提示：上下拖動，拜三下','提示：把香插進香爐'][m.s]||'';}
     return '';}
   if(st==='lie'&&actLabel==='起床')return '提示：點「起床」';
+  {const b=$('bt'),need=st==='room'&&!turnedOnce&&!dream&&!look&&(scn==='my'||scn==='myB')&&b.classList.contains('show');b.classList.toggle('flashT',need);
+    if(need&&!queue.length)return '提示：點右下方的「切換視角」，看看房間的另一面';}
   if(look==='furn')return '提示：點抽屜、櫃門可以打開；能從上面看的，再點一次';
   if(look==='phone')return PH.off?'提示：用手指點轉盤上的數字撥號':'提示：點話筒，把它拿起來';
   if(look==='bunny')return '提示：按住兔子的肚子說話，放開就存檔';
