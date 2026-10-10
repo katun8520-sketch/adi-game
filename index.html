@@ -59,6 +59,11 @@ body.lostw #say{top:50%;bottom:auto;transform:translateY(-50%);color:#4a4642;tex
 #lines p{margin:0;max-width:22em;font-size:min(18px,4.2vw);line-height:2;letter-spacing:.14em;opacity:0;transition:opacity 1.6s}
 #lines p.chap{font-size:26px;letter-spacing:.5em;text-indent:.5em}
 #black{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none}
+#tip{position:fixed;left:16px;right:16px;top:calc(env(safe-area-inset-top,0px) + 14px);z-index:60;text-align:center;font-size:14px;line-height:1.5;letter-spacing:.1em;color:#f3ead8;text-shadow:0 1px 4px #000,0 0 10px #000,0 0 18px #000;opacity:0;transition:opacity .5s;pointer-events:none}
+#tip.on{animation:tipP 2.2s ease-in-out infinite}
+@keyframes tipP{0%,100%{opacity:.7}50%{opacity:1}}
+@media (orientation:landscape){#tip{font-size:13px;top:calc(env(safe-area-inset-top,0px) + 8px)}}
+#hint{color:#f3ead8;opacity:0}
 </style>
 <canvas id="c"></canvas>
 <div id="say"></div>
@@ -67,8 +72,9 @@ body.lostw #say{top:50%;bottom:auto;transform:translateY(-50%);color:#4a4642;tex
 <div class="ctrl" id="br"><button aria-label="往右">▶&#xFE0E;</button></div>
 <div id="pad"><button id="pU" aria-label="往上看">▲</button><button id="pL" aria-label="往左看">◀</button><button id="pR" aria-label="往右看">▶</button><button id="pD" aria-label="往下看">▼</button></div>
 <button id="strug">掙扎<small>連續點擊</small></button>
-<div id="shint">連續點擊畫面</div><button id="retry">嘗試醒來</button>
-<div id="hint">左右拖曳 瞄準蒼蠅</div>
+<div id="shint">提示：連續點擊畫面</div><button id="retry">嘗試醒來</button>
+<div id="hint">提示：左右拖曳，請瞄準下方蒼蠅</div>
+<div id="tip"></div>
 <div id="black"></div>
 <div class="ov" id="lines"><p id="ln" style="white-space:pre-line"></p></div>
 <div class="ov" id="start"><button id="go">開始</button></div>
@@ -215,8 +221,13 @@ let sayT=0;
 function say(txt,who,dur){const e=$('say');e.textContent=(who?who+'：':'')+txt;e.style.opacity=1;sayT=T+(dur||2.6);}
 
 // ================= 操作 =================
+
+/* 小跑步：同一個方向鍵在 0.35 秒內按兩下就跑（速度是走路的 RUN_K 倍）；兩個方向鍵都放開就停 */
+const RUN_K=1.6;let running=false,ranOnce=false;const lastTap={l:-9,r:-9};
+function tapRun(k){const n=performance.now()/1000;if(n-lastTap[k]<.35){running=true;ranOnce=true;}lastTap[k]=n;}
+function runOff(){if(!keys.l&&!keys.r)running=false;}
 function hold(id,k){const b=$(id).firstElementChild;
-  const on=e=>{e.preventDefault();keys[k]=true;b.classList.add('on');},of=e=>{e.preventDefault();keys[k]=false;b.classList.remove('on');};
+  const on=e=>{e.preventDefault();tapRun(k);keys[k]=true;b.classList.add('on');},of=e=>{e.preventDefault();keys[k]=false;runOff();b.classList.remove('on');};
   b.addEventListener('pointerdown',on);for(const ev of['pointerup','pointerleave','pointercancel'])b.addEventListener(ev,of);}
 hold('bl','l');hold('br','r');
 // ▲：站在後門前面才會出現，按了走出教室
@@ -225,8 +236,8 @@ const atDoor=()=>scene==='hall'?(px>HALL.wc0&&px<HALL.wc1):scene==='wc'?WC.ur.so
 $('bu').firstElementChild.style.backgroundImage='url("'+SRC.btn+'")';
 $('bu').firstElementChild.addEventListener('pointerdown',e=>{e.preventDefault();goOut();});
 addEventListener('contextmenu',e=>e.preventDefault());
-addEventListener('keydown',e=>{if(e.key==='ArrowUp'||e.key==='w')goOut();if(e.key==='ArrowLeft'||e.key==='a')keys.l=true;if(e.key==='ArrowRight'||e.key==='d')keys.r=true;});
-addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key==='a')keys.l=false;if(e.key==='ArrowRight'||e.key==='d')keys.r=false;});
+addEventListener('keydown',e=>{if(e.key==='ArrowUp'||e.key==='w')goOut();if(e.repeat)return;if(e.key==='ArrowLeft'||e.key==='a'){tapRun('l');keys.l=true;}if(e.key==='ArrowRight'||e.key==='d'){tapRun('r');keys.r=true;}});
+addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key==='a')keys.l=false;if(e.key==='ArrowRight'||e.key==='d')keys.r=false;runOff();});
 
 // ================= 尿斗前面：瞄準蒼蠅貼紙 =================
 // 貼紙被尿到會慢慢變成真的蒼蠅 → 翅膀開始拍 → 亂飛、往上飛 → 視線跟著往上甩到天花板 → 蒼蠅飛到日光燈旁邊繞一下、往旁邊很快地飛走 → 眼皮闔上（睜開就是家裡的天花板，交給下面的鬼壓床）
@@ -312,7 +323,7 @@ const POV=(()=>{
     // 瞄準
     if(K.ArrowLeft)tx-=420*dt;if(K.ArrowRight)tx+=420*dt;if(K.ArrowUp)ty-=300*dt;if(K.ArrowDown)ty+=300*dt;
     tx=Math.max(760,Math.min(1220,tx));ty=Math.max(260,Math.min(640,ty));
-    if(TILT.ok&&!drag){if(!t0)t0=[TILT.x,TILT.y];const c=v=>Math.max(-TILT_MAX,Math.min(TILT_MAX,v));tx=880+c(TILT.x-t0[0])*TILT_K;ty=440-c(TILT.y-t0[1])*TILT_K*.8;$('hint').textContent='傾斜手機 瞄準蒼蠅';}
+    if(TILT.ok&&!drag){if(!t0)t0=[TILT.x,TILT.y];const c=v=>Math.max(-TILT_MAX,Math.min(TILT_MAX,v));tx=880+c(TILT.x-t0[0])*TILT_K;ty=440-c(TILT.y-t0[1])*TILT_K*.8;$('hint').textContent='提示：傾斜手機，請瞄準下方蒼蠅';}
     aimX+=(tx-aimX)*Math.min(1,dt*4);aimY+=(ty-aimY)*Math.min(1,dt*4);
     const ax=aimX+Math.sin(t*2.3)*7+Math.sin(t*5.1)*3,ay=aimY+Math.sin(t*1.7)*5;
     const streaming=fly.st==='stick';
@@ -749,11 +760,20 @@ function view(){
 
 // ================= 主迴圈 =================
 let last=0;
+var __tip='';
+/* 提示：每一格算現在該顯示哪一句，另一個迴圈把它放到畫面上方 */
+function tipNow(){
+  if(state==='walk')return scene==='hall'?(ranOnce?'提示：找到廁所，點「進廁所」':'提示：連點兩下方向鍵，可以小跑步'):scene==='wc'?'提示：走到小便斗前面，點「上廁所」':'提示：走到教室門口，點「出教室」';
+  if(state==='press'&&$('pad').classList.contains('show'))return '提示：用方向鍵轉動眼睛，看看四周';
+  return '';}
+(function tipLoop(){requestAnimationFrame(tipLoop);const e=document.getElementById('tip');if(!e)return;const t=window.__proStop?'':(__tip||'');
+  if(e.dataset.t!==t){e.dataset.t=t;if(t)e.textContent=t;e.classList.toggle('on',!!t);e.style.opacity=t?'':0;}})();
 function frame(ms){
   if(window.__proStop)return;
   requestAnimationFrame(frame);
   const t=ms/1000,rdt=Math.min(.25,t-last||0),dt=Math.min(.05,rdt);last=t;T=t;rs();   // rdt：劇情時間照真實時間走，手機再慢也不會拖長
   cx.setTransform(DPR,0,0,DPR,0,0);cx.fillStyle='#000';cx.fillRect(0,0,W,H);
+  try{__tip=tipNow();}catch(e){__tip='';}
   if(nload<NEED||state==='idle')return;
   if(sayT&&T>sayT){$('say').style.opacity=0;sayT=0;}
   stT+=rdt;
@@ -813,12 +833,13 @@ function frame(ms){
   if(state==='pov'){POV.frame(dt,ms);window.__dbg={scene,state,stT,px,py};if(state==='pov')return;}
   if(state==='press'){PRESS.frame(dt);window.__dbg={scene,state,stT,px,py};return;}
   const hall=scene!=='class',N=night(),sk=hall?N.sc/SC:1;
-  if(state!=='door'&&state!=='out'){vel+=(dir*150*sk-vel)*Math.min(1,dt*6);if(dir)face=dir;px=Math.max(hall?N.minX:DOOR.cx,Math.min(hall?N.maxX:1900,px+vel*dt));}
+  if(!dir)running=false;
+  if(state!=='door'&&state!=='out'){vel+=(dir*150*sk*(running?RUN_K:1)-vel)*Math.min(1,dt*6);if(dir)face=dir;px=Math.max(hall?N.minX:DOOR.cx,Math.min(hall?N.maxX:1900,px+vel*dt));}
   if(scene==='hall'&&state==='walk'){
     if(px<200&&!wrongSaid&&!sayT){wrongSaid=true;say('廁所好像不是這方向','阿弟',2.8);face=1;vel=0;turnT=.9;}/* 講的同時掉頭，面向廁所那邊 */else if(px>520)wrongSaid=false;     // 往廁所的反方向走，快到底：每次走過去都會講
     if(!shoeSaid&&px>(HALL.door+(HALL.wc0+HALL.wc1)/2)/2){shoeSaid=true;say('我怎麼沒穿鞋……','阿弟',3);}                 // 往廁所走到一半（之後在家裡的周公解夢可以翻到）
   }
-  amp+=(Math.min(1,Math.abs(vel)/(150*sk))-amp)*Math.min(1,dt*8);
+  amp+=(Math.min(1.3,Math.abs(vel)/(150*sk))-amp)*Math.min(1,dt*8);
   phase+=dt*(Math.abs(vel)/(215*sk))*Math.PI*2;
   if(amp<.02){const tg=Math.round(phase/Math.PI)*Math.PI;phase+=(tg-phase)*Math.min(1,dt*6);}
   const sn=Math.floor(phase/Math.PI);if(sn!==stepN){stepN=sn;if(amp>.35){if(barefoot){noise('lowpass',380,.12,.08);noise('bandpass',1700,.012,.03);}else noise('lowpass',900,.1,.06);}}   // 赤腳：悶悶的、帶一點皮膚貼地的聲音
